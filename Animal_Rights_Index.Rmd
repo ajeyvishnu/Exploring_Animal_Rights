@@ -1,0 +1,397 @@
+---
+title: "Exploring Animal Rights: A Multivariate Analysis of Global Perspectives and Practices"
+author: "Ajay Vishnu Addala"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Loading the Dataset
+
+```{r}
+library(readr)
+library(MVA)
+library(HSAUR2)
+library(SciViews)
+library(scatterplot3d)
+library(car)
+library(lattice)
+library(GGally)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(Hotelling)
+library(stats)
+library(biotools)
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+library(cluster)
+library(magrittr)
+library(NbClust)
+library(MASS)
+library(gvlma)
+library(leaps)
+library(relaimpo)
+
+aml <- read.csv("/Users//ajayvishnu/Desktop/RUTGERS/Projects/Animal Rights/Animal_Rights.csv", row.names=1)
+
+attach(aml)
+```
+
+## 1. About the Dataset
+
+### About
+
+* Animal rights laws vary greatly around the world. Animal rights activists argue that animals are sentient beings that deserve a life free from suffering. From recognition of animal sentience to fur-farming bans, many countries are taking a stand against animal cruelty any way they can. There are also other considerations that can impact animal health and welfare, such as pesticide use and meat consumption.
+
+* In the dataset, the data is gathered statistics from key international data sources in order to create this comprehensive “Animal Rights Index” which helps identify which countries are the best and worst in terms of animal rights.
+
+### Data Source
+
+* Link: https://theswiftest.com/animal-rights-index/#:%5C~:text=Animal%20rights%20laws%20vary%20greatly,cruelty%20any%20way%20they%20can
+* Data: https://data.world/makeovermonday/2024week-8-animal-rights
+
+### Data Dictionary
+
+* Country: The name of the Country.
+* ⁠Recognition of Animal Sentience (full weight): Acknowledgemen tthat animals feel pleasure and pain
+* ⁠Recognition of Animal Suffering (full weight): Acknowledgement that animals should not needlessly suffer
+* ⁠⁠Recognition of Animal Suffering (full weight): Acknowledgement that animals should not needlessly suffer
+* ⁠⁠Any Laws Against Animal Cruelty (full weight): Any official laws regarding animal cruelty
+* ⁠Fur Bans (full weight): Bans on fur farming or partial bans on farming furs of specific animals
+* ⁠Support for the Universal Declaration on Animal Welfare (half weight): Pledged support for the Universal Declaration on Animal Welfare, an agreement proposed to the United Nations to recognize that animals are sentient, to prevent cruelty and reduce animal suffering, and to promote standards for the welfare of animals including wildlife, farm animals, pets, and animals involved in scientific research
+* ⁠⁠Meat Consumption per Capita in Kilograms (half negative weight)
+* ⁠⁠Percentage of Terrestrial Protected Areas (half weight): Percentage of total land area that is classified as totally or partially rotected areas of at least 1,000 hectares that are designated by the government as national parks, national monuments, wildlife sanctuaries, nature reserves, protected landscapes, and scientific reserves with limited public access
+*⁠ ⁠Kilograms of Pesticides per Hectare of Cropland (half negative weight)
+* ⁠⁠Environmental Performance Score (half weight): A Yale University ranking of 32 factors to determine environmental health and ecosystem vitality
+* Total Score: Total Animal Index Score
+
+### Analysing the Data
+
+```{r}
+str(aml)
+anml <- aml[,-10]
+stars(anml)
+```
+
+* The Total Score column has been excluded from the analysis as it summarises the rest of the columns.
+* The stars function helps us identify immediate commonalities between countries.
+
+## 2.	The Multivariate Analysis aims to do the following.
+
+#### Investigate the animal rights and differences among countries. (Through Cluster Analysis)
+#### Exploring the interrelationships between the countries based on their animal rights variables. (Through Principal Component Analysis (PCA))
+#### Identify the relation between the animal rights variables and how can they be clubbed. (EFA)
+#### Identify the key factors underlying the animal rights variables and examine the relationships between countries concerning these factors.
+
+## 3. Cluster Analysis
+
+* Cluster analysis categorizes data points into groups based on similarities, revealing patterns and structures within datasets. It aids in exploring relationships, uncovering trends, and facilitating segmentation for targeted strategies in various domains such as business, healthcare, and social sciences. By identifying distinct clusters, analysts can make informed decisions and tailor interventions for more effective outcomes, making cluster analysis an essential tool for data-driven insights and decision-making.
+
+###### Clustering organizes data points into groups, or "clusters," based on their similarities. It helps us see patterns and similarities within the data, making it easier to understand and analyze.
+
+* We first must define the ideal number of clusters to divide the data into. We can check using a couple of tests.
+
+### Optimal Clusters
+
+```{r}
+matstd_anml <- scale(anml)
+
+fviz_nbclust(matstd_anml, kmeans, method = "gap_stat")
+```
+
+#### Code for the function to run (Included only for the function to run and not show errors)
+
+```{r}
+fviz_nbclust <- function (x, FUNcluster = NULL, method = c("silhouette", "wss", 
+                                                           "gap_stat"), diss = NULL, k.max = 10, nboot = 100, verbose = interactive(), 
+                          barfill = "steelblue", barcolor = "steelblue", linecolor = "steelblue", 
+                          print.summary = TRUE, ...) 
+{
+  set.seed(123)
+  if (k.max < 2) 
+    stop("k.max must bet > = 2")
+  method = match.arg(method)
+  if (!inherits(x, c("data.frame", "matrix")) & !("Best.nc" %in% 
+                                                  names(x))) 
+    stop("x should be an object of class matrix/data.frame or ", 
+         "an object created by the function NbClust() [NbClust package].")
+  if (inherits(x, "list") & "Best.nc" %in% names(x)) {
+    best_nc <- x$Best.nc
+    if (any(class(best_nc) == "numeric") ) 
+      print(best_nc)
+    else if (any(class(best_nc) == "matrix") )
+      .viz_NbClust(x, print.summary, barfill, barcolor)
+  }
+  else if (is.null(FUNcluster)) 
+    stop("The argument FUNcluster is required. ", "Possible values are kmeans, pam, hcut, clara, ...")
+  else if (!is.function(FUNcluster)) {
+    stop("The argument FUNcluster should be a function. ", 
+         "Check if you're not overriding the specified function name somewhere.")
+  }
+  else if (method %in% c("silhouette", "wss")) {
+    if (is.data.frame(x)) 
+      x <- as.matrix(x)
+    if (is.null(diss)) 
+      diss <- stats::dist(x)
+    v <- rep(0, k.max)
+    if (method == "silhouette") {
+      for (i in 2:k.max) {
+        clust <- FUNcluster(x, i, ...)
+        v[i] <- .get_ave_sil_width(diss, clust$cluster)
+      }
+    }
+    else if (method == "wss") {
+      for (i in 1:k.max) {
+        clust <- FUNcluster(x, i, ...)
+        v[i] <- .get_withinSS(diss, clust$cluster)
+      }
+    }
+    df <- data.frame(clusters = as.factor(1:k.max), y = v, 
+                     stringsAsFactors = TRUE)
+    ylab <- "Total Within Sum of Square"
+    if (method == "silhouette") 
+      ylab <- "Average silhouette width"
+    p <- ggpubr::ggline(df, x = "clusters", y = "y", group = 1, 
+                        color = linecolor, ylab = ylab, xlab = "Number of clusters k", 
+                        main = "Optimal number of clusters")
+    if (method == "silhouette") 
+      p <- p + geom_vline(xintercept = which.max(v), linetype = 2, 
+                          color = linecolor)
+    return(p)
+  }
+  else if (method == "gap_stat") {
+    extra_args <- list(...)
+    gap_stat <- cluster::clusGap(x, FUNcluster, K.max = k.max, 
+                                 B = nboot, verbose = verbose, ...)
+    if (!is.null(extra_args$maxSE)) 
+      maxSE <- extra_args$maxSE
+    else maxSE <- list(method = "firstSEmax", SE.factor = 1)
+    p <- fviz_gap_stat(gap_stat, linecolor = linecolor, 
+                       maxSE = maxSE)
+    return(p)
+  }
+}
+
+.viz_NbClust <- function (x, print.summary = TRUE, barfill = "steelblue", 
+                          barcolor = "steelblue") 
+{
+  best_nc <- x$Best.nc
+  if (any(class(best_nc) == "numeric") )
+    print(best_nc)
+  else if (any(class(best_nc) == "matrix") ) {
+    best_nc <- as.data.frame(t(best_nc), stringsAsFactors = TRUE)
+    best_nc$Number_clusters <- as.factor(best_nc$Number_clusters)
+    if (print.summary) {
+      ss <- summary(best_nc$Number_clusters)
+      cat("Among all indices: \n===================\n")
+      for (i in 1:length(ss)) {
+        cat("*", ss[i], "proposed ", names(ss)[i], 
+            "as the best number of clusters\n")
+      }
+      cat("\nConclusion\n=========================\n")
+      cat("* According to the majority rule, the best number of clusters is ", 
+          names(which.max(ss)), ".\n\n")
+    }
+    df <- data.frame(Number_clusters = names(ss), freq = ss, 
+                     stringsAsFactors = TRUE)
+    p <- ggpubr::ggbarplot(df, x = "Number_clusters", 
+                           y = "freq", fill = barfill, color = barcolor) + 
+      labs(x = "Number of clusters k", y = "Frequency among all indices", 
+           title = paste0("Optimal number of clusters - k = ", 
+                          names(which.max(ss))))
+    return(p)
+  }
+}
+```
+
+```{r}
+res.nbclust <- anml %>% scale() %>% NbClust(distance = "euclidean", min.nc = 2, max.nc = 10, method = "complete", index ="all") 
+fviz_nbclust(res.nbclust, ggtheme = theme_minimal())
+```
+
+* Tests suggest the optimal clusters to be 2 and 3. For the analysis let us consider 3 and proceed.
+
+#### Visuals using 3 clsuters
+
+```{r}
+pam.res <- pam(matstd_anml, 3)
+# Visualize
+fviz_cluster(pam.res)
+```
+
+#### Hierarchial Clustering
+
+```{r}
+res.hc <- matstd_anml %>% scale() %>% dist(method = "euclidean") %>%
+  hclust(method = "ward.D2")
+
+fviz_dend(res.hc, k = 3, # Cut in four groups
+          cex = 0.5, # label size
+          k_colors = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, # color labels by groups
+          rect = TRUE # Add rectangle around groups
+          )
+```
+
+* We can see that the top 25-30 countries are in a cluster.
+* The bottom 8 countries are in a cluster and the rest of the countries are in a different cluster.
+* Although we did not consider the final Total scores, the cluster analysis was able to identify the bifurcation between the countries and was able to form 3 different clusters which allign to our total scores division.
+* We can further analyse this in the principal component analysis to understand which animal rights factors influenced this difference in the countries.
+
+## 4. Principal Component Analysis (PCA)
+
+* Principal Component Analysis (PCA) is a statistical technique for dimensionality reduction and data visualization. It aims to transform a set of possibly correlated variables into a new set of uncorrelated variables called principal components. These principal components are linear combinations of the original variables and are ordered by the amount of variance they explain in the data.
+
+* PCA finds the directions, or principal components, along which the data varies the most. The first principal component explains the most significant amount of variance in the data, with each subsequent component explaining as much of the remaining variance as possible, subject to the constraint that it is orthogonal (uncorrelated) to the previous components.
+
+###### Principal Component Analysis (PCA) is like a magic trick that helps you simplify this big table into something easier to understand. It does this by finding patterns in the data.
+
+### PCA values
+
+```{r}
+anml_rig <- cor(anml)
+
+anml_pca <- prcomp(anml_rig,scale=TRUE)
+
+summary(anml_pca)
+```
+
+* Further, we can check the schematic diagram to identify how many principal components to consider for our analysis.
+
+### Scree Plots
+
+```{r}
+(eigen_anml <- anml_pca$sdev^2)
+names(eigen_anml) <- paste("PC",1:9,sep="")
+
+plot(eigen_anml, xlab = "Component number", ylab = "Component variance", type = "l", main = "Scree diagram")
+
+fviz_eig(anml_pca, addlabels = TRUE)
+```
+
+* The scree plot determines how many Principal Components (PCs) to use for the analysis.
+* The significant bend in the plot is used to determine the number of PCs to be used.
+* The plot shows us the number of components to be considered is 2. (65.4% of variance) 
+
+
+### Biplot
+
+```{r}
+fviz_pca_var(anml_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+```
+
+*	The distance between points in a biplot reflects the generalised distance between them.
+* The length of the vector reflects the variance of the variable.
+* Correlation of the variables reflected by the angle between them. The smaller the angle, the more significant the correlation.
+* For example, it shows that Environmental Performance and Fur Farming Ban are all correlated strongly.
+
+### Individual PCA
+
+```{r}
+res.pca <- PCA(anml, graph = FALSE)
+
+fviz_pca_ind(res.pca)
+```
+
+* The countries have been plotted based on their PCA values in the individual PCA plot.
+* The countries are allocated based on their similarities.
+* Around 30 countries are accumulated near the positive X-axis and rest of the countries are scattered towards the negative X-axis
+
+### PCA - Biplot
+
+```{r}
+fviz_pca_biplot(res.pca, repel = TRUE,
+                col.var = "#FC4E07", # Variables color
+                )
+```
+
+* The combination of the variables and individual PCAs gives us the PCA biplot.
+* We can see that all the top 25-30 countries from the dataset are towards the positive X-axis.
+* Some countries like Chile, Brazil, Japan, Mexico are near the zero.
+* The Animal Rights variables define the placement of the countries. For example, Any Laws Against Animal Cruelty, 5 countries (Belarus, Azerbaijan, Iran, Vietnam, China) are on completely opposite side of that line on the biplot.
+* The Biplot helps us understand the data in much better way instead of checking the numbers and gives us how the countries have similarities and which countries can fall under the same bucket.
+
+
+## 5. Exploratory Factor Analysis (EFA)
+
+### EFA
+
+* EFA is a valuable tool for exploring complex relationships among variables and uncovering the underlying structure of data sets, which can provide insights into the underlying factors driving observed patterns.
+
+* In this case, we use EFA to reduce the dimensionality. As the data has many columns, we reduce them into fewer factors and associate columns with each factor. We can define each factor by the columns associated with it.
+
+* First, let us look at how many factors are to be considered.
+
+```{r}
+fa.parallel(anml)
+```
+
+* Even in EFA, we did not consider the Total Score.
+* The parallel plots shows us that the ideal number of factors to be used is 2.
+
+```{r}
+fit.anml <- principal(anml, nfactors=2, rotate="varimax")
+fa.diagram(fit.anml)
+```
+
+* The diagram shows which columns contribute to which factors.
+
+### Defining the factors obtained
+
+##### RC1: Metric related to animal welfare
+
+* 4 factors towards welfare of animals contribute majorly towards RC1.
+* We can summarize this as a metric towards animal welfare.
+
+##### RC2: Metric related to animal cruelty
+
+* Recognition towards animal cruelty and Laws against animal cruelty contribute to the RC2.
+* We can summarize this as metric for animal cruelty.
+
+
+###### In the final section, we can review additional support material for our findings and conclude.
+
+## 6.	Observations and Conclusion
+
+* Although we did not consider the Total score column, through Cluster analysis we were able to cluster the countries and it aligned with the score ranking.
+* Similarly, we were able to support the cluster analysis through PCA that gave us the visual on why certain countries are clustered together based on the various measured parameters in the dataset.
+* Finally the EFA helped us in the column reduction by showing a way to club columns and refine them to RCs.
+* For both PCA and Clustering, we found that the countries have been segregated into four segments – Progressive Protectors, Mixed Practices Melting Pot, and Developing Dynamics.
+* A deeper analysis is done to identify the root cause for this classification. The findings are as follows:
+
+###### Progressive Protectors
+* (Luxembourg, United Kingdom, Austria, Czechia, Belgium, Croatia, Sweden, Netherlands, Bulgaria, Switzerland, Greece, Denmark, Germany, Poland, Estonia, Finland, New Zealand, France, Ireland, Latvia, Hungary, Spain, Lithuania, Norway, Italy, Portugal, Cyprus)
+
+* This group comprises countries that strongly emphasise animal rights and welfare. They have well-established laws and policies to protect animals from cruelty and promote their welfare. Many of these nations have a long history of activism and public awareness regarding animal rights issues. Their cultures often prioritize compassion towards animals, leading to comprehensive legislation and enforcement measures.
+
+###### Mixed Practices Melting Pot
+* (Malta, Romania, Tanzania, Chile, Brazil, Mexico, Canada, Japan, Indonesia, India, Peru, Israel, United States, Venezuela, Australia, Thailand, Turkey, Zambia, Malaysia, Zimbabwe, Kenya, Ukraine, Saudi Arabia, South Africa, Myanmar, Uruguay, Colombia, Morocco, Niger, Argentina, Egypt, Russia)
+
+* This group includes countries with varying degrees of animal rights practices. While some may have robust animal welfare laws and regulations, others may lag. The reasons for their inclusion in this group could stem from a mix of cultural, historical, and socio-economic factors. For example, some countries in this group might have a strong tradition of animal welfare, while others may face challenges in implementing effective policies due to political or economic constraints.
+
+###### Developing Dynamics
+* (Ethiopia, Mali, Algeria, Belarus, Azerbaijan, Iran, Vietnam, China)
+
+* This group comprises countries where animal rights and welfare may not be prioritized as other nations. They might need more comprehensive legislation or enforcement mechanisms to protect animals from cruelty. Reasons for this could include cultural attitudes towards animals, limited resources for implementing welfare measures, or competing priorities in developing economies. These countries may also have different historical and cultural perspectives on the treatment of animals, leading to varying levels of protection and advocacy efforts.
+
+
+## 7. Future Scope
+
+* Using the different methods, we can use individual reduction methods and perform multiple regression to check where does a new country stand.
+* Based on the error value, we can decide which methods gives the best possible results.
